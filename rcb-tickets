@@ -1,0 +1,65 @@
+from playwright.sync_api import sync_playwright
+from twilio.rest import Client
+import time
+import os
+
+URL = "https://www.royalchallengers.com/tickets"
+
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_AUTH = os.getenv("TWILIO_AUTH")
+TO_WHATSAPP = os.getenv("TO_WHATSAPP")
+FROM_WHATSAPP = "whatsapp:+14155238886"
+
+client = Client(TWILIO_SID, TWILIO_AUTH)
+
+last_state = False   # track changes
+
+def send_whatsapp(msg):
+    client.messages.create(
+        body=msg,
+        from_=FROM_WHATSAPP,
+        to=TO_WHATSAPP
+    )
+
+def check_tickets():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        page.goto(URL, timeout=60000)
+        page.wait_for_timeout(4000)
+
+        # Target actual CTA buttons only (more accurate)
+        buttons = page.locator("button:has-text('Buy'), a:has-text('Buy')").all()
+
+        for btn in buttons:
+            try:
+                if btn.is_visible() and btn.is_enabled():
+                    browser.close()
+                    return True
+            except:
+                continue
+
+        browser.close()
+        return False
+
+def run():
+    global last_state
+
+    try:
+        current = check_tickets()
+
+        if current and not last_state:
+            msg = f"🔥 RCB Tickets LIVE!\nBook now: {URL}"
+            send_whatsapp(msg)
+            print("ALERT SENT 🚀")
+
+        last_state = current
+
+    except Exception as e:
+        print("Error:", e)
+
+if __name__ == "__main__":
+    while True:
+        run()
+        time.sleep(30)   # ⚡ 30 sec checks
