@@ -1,0 +1,23 @@
+name: RCB Ticket Bot
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - run: |
+          pip install playwright requests
+          playwright install --with-deps
+
+      - run: python check.py
